@@ -1,0 +1,1037 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Cricket Bash - 2D Cricket Game</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.development.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.development.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --green-dark: #1a4a1a;
+      --green-mid: #2d7a2d;
+      --green-light: #3da83d;
+      --pitch-brown: #c4933a;
+      --pitch-light: #d4a84a;
+      --sky-top: #1a6fa8;
+      --sky-bot: #5db8e8;
+      --red: #e63946;
+      --gold: #f4d03f;
+      --white: #f0f0f0;
+      --dark: #0d1117;
+      --scoreboard-bg: #0a0a14;
+      --neon-green: #39ff14;
+      --panel-bg: rgba(0,0,0,0.75);
+    }
+
+    body {
+      background: #060a0f;
+      font-family: 'Rajdhani', sans-serif;
+      color: var(--white);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      overflow-x: hidden;
+    }
+
+    /* ===== HEADER ===== */
+    #header {
+      width: 100%;
+      max-width: 900px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 20px;
+      background: linear-gradient(90deg, #0d1117, #1a2744, #0d1117);
+      border-bottom: 2px solid #f4d03f44;
+    }
+    #header h1 {
+      font-family: 'Orbitron', monospace;
+      font-size: 1.4rem;
+      color: var(--gold);
+      text-shadow: 0 0 15px #f4d03f88;
+      letter-spacing: 3px;
+    }
+    .header-flag { font-size: 1.6rem; }
+
+    /* ===== MAIN GAME WRAPPER ===== */
+    #game-wrapper {
+      width: 100%;
+      max-width: 900px;
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      position: relative;
+    }
+
+    /* ===== SCOREBOARD ===== */
+    #scoreboard {
+      background: var(--scoreboard-bg);
+      border: 1px solid #2a3a5a;
+      border-top: none;
+      padding: 10px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .score-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-width: 80px;
+    }
+    .score-label {
+      font-size: 0.65rem;
+      color: #8899bb;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    .score-value {
+      font-family: 'Orbitron', monospace;
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--gold);
+      text-shadow: 0 0 10px #f4d03f66;
+      line-height: 1;
+    }
+    .score-value.runs { color: #39ff14; text-shadow: 0 0 10px #39ff1466; }
+    .score-value.wickets { color: #ff4444; text-shadow: 0 0 10px #ff444466; }
+    .score-divider {
+      width: 1px;
+      height: 40px;
+      background: #2a3a5a;
+    }
+
+    /* ===== CRICKET FIELD ===== */
+    #field-canvas-wrapper {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 16/7;
+      overflow: hidden;
+    }
+    canvas#fieldCanvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    /* ===== RESULT OVERLAY ===== */
+    #result-overlay {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-family: 'Orbitron', monospace;
+      font-size: 2.5rem;
+      font-weight: 900;
+      pointer-events: none;
+      text-align: center;
+      transition: opacity 0.3s;
+      text-shadow: 0 0 30px currentColor;
+      z-index: 10;
+    }
+
+    /* ===== COMMENTARY BAR ===== */
+    #commentary-bar {
+      background: #0f1923;
+      border-top: 1px solid #1a2a3a;
+      padding: 6px 16px;
+      font-size: 0.85rem;
+      color: #aac4e0;
+      font-style: italic;
+      min-height: 28px;
+      text-align: center;
+    }
+
+    /* ===== CONTROLS SECTION ===== */
+    #controls {
+      background: #0d1520;
+      border: 1px solid #1a2a3a;
+      border-top: none;
+      padding: 14px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    /* Style selector */
+    #style-selector {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+    }
+    .style-btn {
+      flex: 1;
+      max-width: 200px;
+      padding: 10px 16px;
+      border: 2px solid transparent;
+      border-radius: 6px;
+      cursor: pointer;
+      font-family: 'Orbitron', monospace;
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 1px;
+      transition: all 0.2s;
+      text-transform: uppercase;
+    }
+    .style-btn.aggressive {
+      background: #1a0808;
+      border-color: #cc3333;
+      color: #ff6666;
+    }
+    .style-btn.aggressive.active, .style-btn.aggressive:hover {
+      background: #cc3333;
+      color: #fff;
+      box-shadow: 0 0 20px #cc333388;
+    }
+    .style-btn.defensive {
+      background: #081a10;
+      border-color: #2d8a2d;
+      color: #44dd44;
+    }
+    .style-btn.defensive.active, .style-btn.defensive:hover {
+      background: #2d7a2d;
+      color: #fff;
+      box-shadow: 0 0 20px #2d8a2d88;
+    }
+    .style-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    /* Power bar container */
+    #powerbar-section {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .powerbar-label {
+      font-size: 0.7rem;
+      color: #8899bb;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      text-align: center;
+    }
+    #powerbar-outer {
+      position: relative;
+      height: 42px;
+      border-radius: 8px;
+      overflow: visible;
+      border: 2px solid #2a3a5a;
+      cursor: pointer;
+      user-select: none;
+    }
+    #powerbar-track {
+      display: flex;
+      width: 100%;
+      height: 100%;
+      border-radius: 6px;
+      overflow: hidden;
+    }
+    .pb-segment {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Orbitron', monospace;
+      font-size: 0.6rem;
+      font-weight: 700;
+      color: rgba(255,255,255,0.9);
+      transition: filter 0.2s;
+      text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+      overflow: hidden;
+      white-space: nowrap;
+    }
+    /* segment colors */
+    .pb-wicket  { background: linear-gradient(180deg, #e63946, #a51d28); }
+    .pb-0       { background: linear-gradient(180deg, #4a4a4a, #222); }
+    .pb-1       { background: linear-gradient(180deg, #5b7fa6, #3a5a7a); }
+    .pb-2       { background: linear-gradient(180deg, #2d8a2d, #1a5a1a); }
+    .pb-3       { background: linear-gradient(180deg, #7a4a9a, #4a2a6a); }
+    .pb-4       { background: linear-gradient(180deg, #e8a020, #a06010); }
+    .pb-6       { background: linear-gradient(180deg, #d4af37, #8a6a10); }
+
+    /* Slider needle */
+    #pb-slider {
+      position: absolute;
+      top: -8px;
+      width: 4px;
+      height: calc(100% + 16px);
+      background: white;
+      border-radius: 3px;
+      box-shadow: 0 0 12px rgba(255,255,255,0.9);
+      pointer-events: none;
+      transform: translateX(-50%);
+      z-index: 5;
+    }
+    #pb-slider::before {
+      content: '▼';
+      position: absolute;
+      top: -2px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 10px;
+      color: white;
+    }
+
+    /* pb legend */
+    #pb-legend {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 0.65rem;
+      color: #8899bb;
+    }
+    .legend-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 2px;
+    }
+
+    /* Play button */
+    #play-btn {
+      width: 100%;
+      padding: 14px;
+      background: linear-gradient(135deg, #1a3a6a, #2a5a9a);
+      border: 2px solid #4a8adf;
+      border-radius: 8px;
+      color: white;
+      font-family: 'Orbitron', monospace;
+      font-size: 1rem;
+      font-weight: 700;
+      letter-spacing: 3px;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-transform: uppercase;
+    }
+    #play-btn:hover:not(:disabled) {
+      background: linear-gradient(135deg, #2a5a9a, #3a7aca);
+      box-shadow: 0 0 25px #4a8adf88;
+      transform: translateY(-1px);
+    }
+    #play-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+      transform: none;
+    }
+    #play-btn.waiting {
+      animation: pulse-btn 1s ease-in-out infinite;
+    }
+    @keyframes pulse-btn {
+      0%, 100% { box-shadow: 0 0 10px #4a8adf44; }
+      50% { box-shadow: 0 0 30px #4a8adf99; }
+    }
+
+    /* ===== GAME OVER SCREEN ===== */
+    #gameover-screen {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.88);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      backdrop-filter: blur(6px);
+    }
+    .go-title {
+      font-family: 'Orbitron', monospace;
+      font-size: 3rem;
+      font-weight: 900;
+      color: var(--gold);
+      text-shadow: 0 0 40px #f4d03f99;
+      margin-bottom: 8px;
+      text-align: center;
+    }
+    .go-subtitle {
+      font-size: 1rem;
+      color: #8899bb;
+      margin-bottom: 30px;
+      text-align: center;
+      font-style: italic;
+    }
+    .go-stats {
+      display: flex;
+      gap: 30px;
+      margin-bottom: 30px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .go-stat {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      background: #0d1520;
+      border: 1px solid #2a3a5a;
+      border-radius: 8px;
+      padding: 16px 24px;
+    }
+    .go-stat-label { font-size: 0.7rem; color: #8899bb; text-transform: uppercase; letter-spacing: 1px; }
+    .go-stat-value {
+      font-family: 'Orbitron', monospace;
+      font-size: 2rem;
+      font-weight: 700;
+      color: var(--gold);
+    }
+    #restart-btn {
+      padding: 16px 50px;
+      background: linear-gradient(135deg, #1a6a1a, #2a9a2a);
+      border: 2px solid #3dcc3d;
+      border-radius: 8px;
+      color: white;
+      font-family: 'Orbitron', monospace;
+      font-size: 1rem;
+      font-weight: 700;
+      letter-spacing: 3px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    #restart-btn:hover {
+      background: linear-gradient(135deg, #2a9a2a, #3acc3a);
+      box-shadow: 0 0 30px #3dcc3d88;
+      transform: translateY(-2px);
+    }
+
+    /* responsive */
+    @media (max-width: 600px) {
+      #header h1 { font-size: 1rem; }
+      .score-value { font-size: 1.1rem; }
+      .go-title { font-size: 2rem; }
+    }
+  </style>
+</head>
+<body>
+
+<div id="header">
+  <span class="header-flag">🏏</span>
+  <h1>CRICKET BASH</h1>
+  <span class="header-flag">🏆</span>
+</div>
+
+<div id="root"></div>
+
+<script type="text/babel">
+
+const { useState, useEffect, useRef, useCallback } = React;
+
+// ─── CONSTANTS ───────────────────────────────────────────────
+const TOTAL_BALLS = 12;
+const MAX_WICKETS = 2;
+const BALL_RADIUS = 7;
+
+const PROBABILITIES = {
+  aggressive: [
+    { label: 'W',    runs: 'W', prob: 0.30, cls: 'pb-wicket' },
+    { label: '0',    runs:  0,  prob: 0.10, cls: 'pb-0' },
+    { label: '1',    runs:  1,  prob: 0.10, cls: 'pb-1' },
+    { label: '2',    runs:  2,  prob: 0.10, cls: 'pb-2' },
+    { label: '3',    runs:  3,  prob: 0.05, cls: 'pb-3' },
+    { label: '4',    runs:  4,  prob: 0.20, cls: 'pb-4' },
+    { label: '6',    runs:  6,  prob: 0.15, cls: 'pb-6' },
+  ],
+  defensive: [
+    { label: 'W',    runs: 'W', prob: 0.15, cls: 'pb-wicket' },
+    { label: '0',    runs:  0,  prob: 0.20, cls: 'pb-0' },
+    { label: '1',    runs:  1,  prob: 0.30, cls: 'pb-1' },
+    { label: '2',    runs:  2,  prob: 0.20, cls: 'pb-2' },
+    { label: '3',    runs:  3,  prob: 0.05, cls: 'pb-3' },
+    { label: '4',    runs:  4,  prob: 0.07, cls: 'pb-4' },
+    { label: '6',    runs:  6,  prob: 0.03, cls: 'pb-6' },
+  ],
+};
+
+const COMMENTARY = {
+  W:  ["BOWLED! What a delivery! The stumps are shattered!", "OUT! Gone for a duck! Brilliant bowling!", "CAUGHT! That's a stunning catch at mid-off!", "LBW! Stone dead! The finger goes up!", "That's the end of the road! Back to the pavilion!"],
+  0:  ["Dot ball. Good tight bowling.", "Nothing off that, well defended.", "Misses the bat completely, dot ball."],
+  1:  ["Pushed to mid-on for a quick single.", "Turned off the pads — they run one.", "Clipped to square leg, easy single."],
+  2:  ["Driven hard — two runs!", "Good placement, they run a couple.", "Racing back for the second!"],
+  3:  ["Three runs! Brilliant running between the wickets!", "They've converted a boundary miss into three!", "Excellent cricket, three more added."],
+  4:  ["FOUR! Cracking shot to the boundary!", "BOUNDARY! Races away to the fence!", "FOUR! Nothing the fielder could do!"],
+  6:  ["SIX! MASSIVE HIT! Into the stands!", "SIX! What a shot! Cleared the rope with ease!", "SIX! The crowd goes wild! Towering maximum!"],
+};
+
+function getRandCommentary(key) {
+  const arr = COMMENTARY[key] || COMMENTARY[0];
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+
+// Get cumulative boundaries for prob segments
+function getCumulative(probs) {
+  let cum = 0;
+  return probs.map(p => { cum += p.prob; return cum; });
+}
+
+function getOutcomeFromSlider(sliderPos, style) {
+  const probs = PROBABILITIES[style];
+  let cum = 0;
+  for (let seg of probs) {
+    cum += seg.prob;
+    if (sliderPos <= cum) return seg;
+  }
+  return probs[probs.length - 1];
+}
+
+function formatOvers(ballsBowled) {
+  const overs = Math.floor(ballsBowled / 6);
+  const balls = ballsBowled % 6;
+  return `${overs}.${balls}`;
+}
+
+// ─── CANVAS FIELD RENDERER ────────────────────────────────────
+function drawField(canvas, ballPos, batAnim, bowlAnim, swingAnim) {
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+
+  // Sky gradient
+  const sky = ctx.createLinearGradient(0, 0, 0, H * 0.38);
+  sky.addColorStop(0, '#0d3a6e');
+  sky.addColorStop(1, '#3a8abf');
+  ctx.fillStyle = sky;
+  ctx.fillRect(0, 0, W, H * 0.38);
+
+  // Crowd stands
+  ctx.fillStyle = '#1a2a3a';
+  ctx.fillRect(0, H * 0.18, W, H * 0.22);
+  // Crowd dots
+  for (let i = 0; i < 80; i++) {
+    const cx = (i / 80) * W + (Math.sin(i * 7.3) * 5);
+    const cy = H * 0.20 + (Math.sin(i * 3.1) * H * 0.04);
+    const colors = ['#cc3333','#3355cc','#33aa33','#ccaa22','#993399'];
+    ctx.fillStyle = colors[i % colors.length];
+    ctx.beginPath();
+    ctx.arc(cx, cy, 3, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Outfield grass
+  const grass = ctx.createLinearGradient(0, H * 0.38, 0, H);
+  grass.addColorStop(0, '#2d7a2d');
+  grass.addColorStop(1, '#1a4a1a');
+  ctx.fillStyle = grass;
+  ctx.fillRect(0, H * 0.38, W, H * 0.62);
+
+  // Grass stripes
+  for (let i = 0; i < 6; i++) {
+    ctx.fillStyle = i % 2 === 0 ? 'rgba(0,0,0,0.06)' : 'transparent';
+    ctx.fillRect(0, H * 0.38 + i * (H * 0.1), W, H * 0.1);
+  }
+
+  // Pitch (centre strip)
+  const pitchX = W * 0.3, pitchW = W * 0.4;
+  const pitchY = H * 0.45, pitchH = H * 0.42;
+  const pitchGrad = ctx.createLinearGradient(pitchX, pitchY, pitchX, pitchY + pitchH);
+  pitchGrad.addColorStop(0, '#c4933a');
+  pitchGrad.addColorStop(1, '#a07020');
+  ctx.fillStyle = pitchGrad;
+  ctx.fillRect(pitchX, pitchY, pitchW, pitchH);
+
+  // Pitch crease lines
+  ctx.strokeStyle = 'rgba(255,255,255,0.8)';
+  ctx.lineWidth = 2;
+  // batting crease
+  ctx.beginPath(); ctx.moveTo(pitchX, pitchY + pitchH * 0.82); ctx.lineTo(pitchX + pitchW, pitchY + pitchH * 0.82); ctx.stroke();
+  // popping crease
+  ctx.beginPath(); ctx.moveTo(pitchX, pitchY + pitchH * 0.12); ctx.lineTo(pitchX + pitchW, pitchY + pitchH * 0.12); ctx.stroke();
+
+  // Stumps - bowler end (top)
+  const stumpX1 = W * 0.5, stumpY1 = pitchY + pitchH * 0.12;
+  drawStumps(ctx, stumpX1, stumpY1, 12, 20);
+
+  // Stumps - batting end (bottom)
+  const stumpX2 = W * 0.5, stumpY2 = pitchY + pitchH * 0.82;
+  drawStumps(ctx, stumpX2, stumpY2, 14, 24);
+
+  // Bowler (top) - animated approach
+  const bowlerX = W * 0.5;
+  const bowlerY = H * 0.42 - bowlAnim * 15;
+  drawBowler(ctx, bowlerX, bowlerY, 18);
+
+  // Ball
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(ballPos.x, ballPos.y, BALL_RADIUS, 0, Math.PI * 2);
+  ctx.fillStyle = '#cc2200';
+  ctx.fill();
+  ctx.strokeStyle = '#661100';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+  // seam
+  ctx.beginPath();
+  ctx.arc(ballPos.x, ballPos.y, BALL_RADIUS * 0.65, 0, Math.PI);
+  ctx.strokeStyle = '#fff';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+  ctx.restore();
+
+  // Batsman at bottom
+  const batX = W * 0.5;
+  const batY = stumpY2 - 35;
+  drawBatsman(ctx, batX, batY, swingAnim, batAnim);
+}
+
+function drawStumps(ctx, cx, cy, w, h) {
+  const spacing = w / 3;
+  ctx.fillStyle = '#f5e6c8';
+  for (let i = -1; i <= 1; i++) {
+    ctx.fillRect(cx + i * spacing - 1.5, cy - h, 3, h);
+  }
+  // bails
+  ctx.fillStyle = '#e8c870';
+  ctx.fillRect(cx - spacing, cy - h - 2, spacing * 2, 3);
+}
+
+function drawBowler(ctx, x, y, size) {
+  ctx.save();
+  ctx.strokeStyle = '#ddeeff';
+  ctx.lineWidth = 2.5;
+  ctx.lineCap = 'round';
+  // body
+  ctx.beginPath(); ctx.moveTo(x, y - size * 0.8); ctx.lineTo(x, y); ctx.stroke();
+  // head
+  ctx.beginPath(); ctx.arc(x, y - size * 1.05, size * 0.25, 0, Math.PI * 2);
+  ctx.fillStyle = '#f5c2a0'; ctx.fill(); ctx.stroke();
+  // arm up (bowling)
+  ctx.beginPath(); ctx.moveTo(x, y - size * 0.65); ctx.lineTo(x - size * 0.5, y - size * 1.1); ctx.stroke();
+  // legs
+  ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x - size * 0.3, y + size * 0.5); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + size * 0.2, y + size * 0.5); ctx.stroke();
+  ctx.restore();
+}
+
+function drawBatsman(ctx, x, y, swingAnim, batAnim) {
+  ctx.save();
+  const size = 22;
+  const swing = swingAnim * Math.PI * 0.75;
+
+  ctx.strokeStyle = '#ffffcc';
+  ctx.lineWidth = 3;
+  ctx.lineCap = 'round';
+
+  // head
+  ctx.beginPath();
+  ctx.arc(x, y - size * 1.05, size * 0.28, 0, Math.PI * 2);
+  ctx.fillStyle = '#f5c2a0'; ctx.fill();
+  ctx.strokeStyle = '#ccaa88'; ctx.lineWidth = 1.5; ctx.stroke();
+
+  // helmet shade
+  ctx.beginPath();
+  ctx.arc(x, y - size * 1.05, size * 0.28, Math.PI, Math.PI * 2);
+  ctx.fillStyle = batAnim ? '#2244aa' : '#114422';
+  ctx.fill();
+
+  ctx.strokeStyle = '#ffffcc'; ctx.lineWidth = 3;
+
+  // body
+  ctx.beginPath(); ctx.moveTo(x, y - size * 0.75); ctx.lineTo(x, y); ctx.stroke();
+
+  // legs - stance
+  ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x - size * 0.35, y + size * 0.55); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + size * 0.2, y + size * 0.55); ctx.stroke();
+
+  // bat + arm - swing
+  ctx.save();
+  ctx.translate(x - size * 0.1, y - size * 0.55);
+  ctx.rotate(-swing + 0.3);
+
+  // arm
+  ctx.strokeStyle = '#ffffcc';
+  ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(size * 0.55, 0); ctx.stroke();
+
+  // bat blade
+  ctx.fillStyle = '#c4933a';
+  ctx.strokeStyle = '#8a6020';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.rect(size * 0.5, -size * 0.12, size * 0.08, size * 0.55);
+  ctx.fill(); ctx.stroke();
+
+  // bat handle
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(size * 0.52, -size * 0.15, size * 0.04, size * 0.18);
+
+  ctx.restore();
+  ctx.restore();
+}
+
+// ─── MAIN APP ─────────────────────────────────────────────────
+function App() {
+  const canvasRef = useRef(null);
+  const animFrameRef = useRef(null);
+  const sliderAnimRef = useRef(null);
+
+  // Game state
+  const [runs, setRuns] = useState(0);
+  const [wickets, setWickets] = useState(0);
+  const [ballsBowled, setBallsBowled] = useState(0);
+  const [style, setStyle] = useState('aggressive');
+  const [gamePhase, setGamePhase] = useState('idle'); // idle | bowling | ready | animating | result | gameover
+  const [commentary, setCommentary] = useState('Select your batting style and click PLAY SHOT to begin!');
+  const [resultText, setResultText] = useState('');
+  const [resultColor, setResultColor] = useState('white');
+  const [showGameOver, setShowGameOver] = useState(false);
+  const [sliderPos, setSliderPos] = useState(0); // 0..1
+  const [isSliding, setIsSliding] = useState(false);
+
+  // Ball animation state
+  const ballPosRef = useRef({ x: 450, y: 100 });
+  const bowlAnimRef = useRef(0); // 0..1 progress
+  const batSwingRef = useRef(0); // 0..1
+  const batActiveRef = useRef(false);
+  const sliderRef = useRef(0);
+  const slidingRef = useRef(false);
+  const phaseRef = useRef('idle');
+
+  // Canvas size
+  const [canvasSize, setCanvasSize] = useState({ w: 900, h: 394 });
+
+  useEffect(() => {
+    const update = () => {
+      const el = document.getElementById('field-canvas-wrapper');
+      if (el) {
+        const w = el.clientWidth;
+        const h = Math.round(w * 7 / 16);
+        setCanvasSize({ w, h });
+      }
+    };
+    update();
+    window.addEventListener('resize', update);
+    return () => window.removeEventListener('resize', update);
+  }, []);
+
+  // Slider animation loop
+  useEffect(() => {
+    let raf;
+    const speed = 0.008;
+    const animate = () => {
+      if (slidingRef.current) {
+        sliderRef.current = (sliderRef.current + speed) % 1;
+        setSliderPos(sliderRef.current);
+      }
+      raf = requestAnimationFrame(animate);
+    };
+    raf = requestAnimationFrame(animate);
+    return () => cancelAnimationFrame(raf);
+  }, []);
+
+  // Main render loop
+  useEffect(() => {
+    let raf;
+    const render = () => {
+      const canvas = canvasRef.current;
+      if (canvas) {
+        canvas.width = canvasSize.w;
+        canvas.height = canvasSize.h;
+        const W = canvasSize.w, H = canvasSize.h;
+
+        // Ball position based on bowl anim
+        const startX = W * 0.5, startY = H * 0.42;
+        const endX = W * 0.5, endY = H * 0.74;
+        const t = bowlAnimRef.current;
+        const bx = startX + (endX - startX) * t;
+        const by = startY + (endY - startY) * t;
+        ballPosRef.current = { x: bx, y: by };
+
+        drawField(canvas, ballPosRef.current, batActiveRef.current, t, batSwingRef.current);
+      }
+      raf = requestAnimationFrame(render);
+    };
+    raf = requestAnimationFrame(render);
+    return () => cancelAnimationFrame(raf);
+  }, [canvasSize]);
+
+  const startBowling = useCallback(() => {
+    // Animate ball from bowler to batsman
+    phaseRef.current = 'bowling';
+    setGamePhase('bowling');
+    slidingRef.current = false;
+    let t = 0;
+    const animate = () => {
+      t += 0.025;
+      bowlAnimRef.current = Math.min(t, 1);
+      if (t < 1) {
+        animFrameRef.current = requestAnimationFrame(animate);
+      } else {
+        bowlAnimRef.current = 1;
+        phaseRef.current = 'ready';
+        setGamePhase('ready');
+        slidingRef.current = true;
+        setIsSliding(true);
+      }
+    };
+    animFrameRef.current = requestAnimationFrame(animate);
+  }, []);
+
+  const handlePlay = useCallback(() => {
+    if (phaseRef.current === 'idle') {
+      startBowling();
+    } else if (phaseRef.current === 'ready') {
+      // Stop slider, determine outcome
+      slidingRef.current = false;
+      setIsSliding(false);
+      const pos = sliderRef.current;
+      const outcome = getOutcomeFromSlider(pos, style);
+
+      // Bat swing animation
+      phaseRef.current = 'animating';
+      setGamePhase('animating');
+      batActiveRef.current = true;
+      let sw = 0;
+      const swingAnimate = () => {
+        sw += 0.06;
+        batSwingRef.current = Math.min(sw, 1);
+        if (sw < 1) {
+          requestAnimationFrame(swingAnimate);
+        } else {
+          // Process outcome
+          setTimeout(() => {
+            batSwingRef.current = 0;
+            batActiveRef.current = false;
+            bowlAnimRef.current = 0;
+
+            const key = outcome.runs === 'W' ? 'W' : outcome.runs;
+            setCommentary(getRandCommentary(String(key)));
+
+            if (outcome.runs === 'W') {
+              setResultText('OUT!');
+              setResultColor('#ff4444');
+              setWickets(prev => {
+                const nw = prev + 1;
+                setBallsBowled(prev2 => {
+                  const nb = prev2 + 1;
+                  if (nw >= MAX_WICKETS || nb >= TOTAL_BALLS) {
+                    setShowGameOver(true);
+                    phaseRef.current = 'gameover';
+                    setGamePhase('gameover');
+                  } else {
+                    phaseRef.current = 'idle';
+                    setGamePhase('idle');
+                  }
+                  return nb;
+                });
+                return nw;
+              });
+            } else {
+              setResultText(outcome.runs === 0 ? 'DOT' : outcome.runs === 4 ? 'FOUR!' : outcome.runs === 6 ? 'SIX!!' : `+${outcome.runs}`);
+              setResultColor(outcome.runs >= 6 ? '#f4d03f' : outcome.runs >= 4 ? '#ff9944' : '#39ff14');
+              setRuns(prev => prev + outcome.runs);
+              setBallsBowled(prev => {
+                const nb = prev + 1;
+                if (nb >= TOTAL_BALLS) {
+                  setWickets(wk => {
+                    if (wk >= MAX_WICKETS) {
+                      setShowGameOver(true);
+                      phaseRef.current = 'gameover';
+                      setGamePhase('gameover');
+                    }
+                    return wk;
+                  });
+                  setShowGameOver(true);
+                  phaseRef.current = 'gameover';
+                  setGamePhase('gameover');
+                } else {
+                  phaseRef.current = 'idle';
+                  setGamePhase('idle');
+                }
+                return nb;
+              });
+            }
+
+            // Clear result text after delay
+            setTimeout(() => setResultText(''), 1200);
+          }, 400);
+        }
+      };
+      requestAnimationFrame(swingAnimate);
+    }
+  }, [style, startBowling]);
+
+  const restart = () => {
+    setRuns(0);
+    setWickets(0);
+    setBallsBowled(0);
+    setStyle('aggressive');
+    setGamePhase('idle');
+    setShowGameOver(false);
+    setCommentary('Select your batting style and click PLAY SHOT!');
+    setResultText('');
+    bowlAnimRef.current = 0;
+    batSwingRef.current = 0;
+    batActiveRef.current = false;
+    slidingRef.current = false;
+    sliderRef.current = 0;
+    phaseRef.current = 'idle';
+  };
+
+  const probs = PROBABILITIES[style];
+  const ballsLeft = TOTAL_BALLS - ballsBowled;
+  const oversStr = formatOvers(ballsBowled);
+
+  const playBtnLabel = gamePhase === 'idle' ? '⚾ BOWL' : gamePhase === 'ready' ? '🏏 PLAY SHOT!' : gamePhase === 'bowling' ? 'BALL IN AIR...' : 'WAIT...';
+  const playBtnDisabled = gamePhase === 'animating' || gamePhase === 'gameover' || gamePhase === 'bowling';
+
+  return (
+    <div id="game-wrapper">
+      {/* SCOREBOARD */}
+      <div id="scoreboard">
+        <div className="score-item">
+          <span className="score-label">Runs</span>
+          <span className="score-value runs">{runs}</span>
+        </div>
+        <div className="score-divider"/>
+        <div className="score-item">
+          <span className="score-label">Wickets</span>
+          <span className="score-value wickets">{wickets}/{MAX_WICKETS}</span>
+        </div>
+        <div className="score-divider"/>
+        <div className="score-item">
+          <span className="score-label">Overs</span>
+          <span className="score-value">{oversStr}</span>
+        </div>
+        <div className="score-divider"/>
+        <div className="score-item">
+          <span className="score-label">Balls Left</span>
+          <span className="score-value">{ballsLeft}</span>
+        </div>
+        <div className="score-divider"/>
+        <div className="score-item">
+          <span className="score-label">SR</span>
+          <span className="score-value">{ballsBowled > 0 ? ((runs / ballsBowled) * 100).toFixed(1) : '0.0'}</span>
+        </div>
+      </div>
+
+      {/* FIELD */}
+      <div id="field-canvas-wrapper">
+        <canvas ref={canvasRef} id="fieldCanvas" width={canvasSize.w} height={canvasSize.h} />
+        {resultText && (
+          <div id="result-overlay" style={{ color: resultColor, opacity: 1 }}>
+            {resultText}
+          </div>
+        )}
+      </div>
+
+      {/* COMMENTARY */}
+      <div id="commentary-bar">💬 {commentary}</div>
+
+      {/* CONTROLS */}
+      <div id="controls">
+        {/* Style selector */}
+        <div id="style-selector">
+          <button
+            className={`style-btn aggressive ${style === 'aggressive' ? 'active' : ''}`}
+            onClick={() => { if (gamePhase === 'idle') setStyle('aggressive'); }}
+            disabled={gamePhase !== 'idle'}
+          >
+            ⚡ Aggressive
+          </button>
+          <button
+            className={`style-btn defensive ${style === 'defensive' ? 'active' : ''}`}
+            onClick={() => { if (gamePhase === 'idle') setStyle('defensive'); }}
+            disabled={gamePhase !== 'idle'}
+          >
+            🛡 Defensive
+          </button>
+        </div>
+
+        {/* Power Bar */}
+        <div id="powerbar-section">
+          <div className="powerbar-label">⚡ Power Bar — {style === 'aggressive' ? 'Aggressive' : 'Defensive'} Mode</div>
+          <div id="powerbar-outer">
+            <div id="powerbar-track">
+              {probs.map((seg, i) => (
+                <div
+                  key={i}
+                  className={`pb-segment ${seg.cls}`}
+                  style={{ width: `${seg.prob * 100}%` }}
+                  title={`${seg.label}: ${(seg.prob * 100).toFixed(0)}%`}
+                >
+                  {seg.prob >= 0.08 ? seg.label : ''}
+                </div>
+              ))}
+            </div>
+            {/* Slider needle */}
+            <div
+              id="pb-slider"
+              style={{ left: `${sliderPos * 100}%` }}
+            />
+          </div>
+          {/* Legend */}
+          <div id="pb-legend">
+            {probs.map((seg, i) => (
+              <div key={i} className="legend-item">
+                <div className="legend-dot" style={{
+                  background: seg.cls.includes('wicket') ? '#e63946'
+                    : seg.cls.includes('pb-0') ? '#4a4a4a'
+                    : seg.cls.includes('pb-1') ? '#5b7fa6'
+                    : seg.cls.includes('pb-2') ? '#2d8a2d'
+                    : seg.cls.includes('pb-3') ? '#7a4a9a'
+                    : seg.cls.includes('pb-4') ? '#e8a020'
+                    : '#d4af37'
+                }} />
+                {seg.label} ({(seg.prob * 100).toFixed(0)}%)
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Play button */}
+        <button
+          id="play-btn"
+          className={gamePhase === 'ready' ? 'waiting' : ''}
+          onClick={handlePlay}
+          disabled={playBtnDisabled}
+        >
+          {playBtnLabel}
+        </button>
+      </div>
+
+      {/* GAME OVER */}
+      {showGameOver && (
+        <div id="gameover-screen">
+          <div className="go-title">
+            {wickets >= MAX_WICKETS ? '💀 ALL OUT!' : '⏱ INNINGS OVER!'}
+          </div>
+          <div className="go-subtitle">
+            {wickets >= MAX_WICKETS ? 'Your innings ended after losing all wickets.' : 'You completed your 2 overs.'}
+          </div>
+          <div className="go-stats">
+            <div className="go-stat">
+              <span className="go-stat-label">Total Runs</span>
+              <span className="go-stat-value" style={{color:'#39ff14'}}>{runs}</span>
+            </div>
+            <div className="go-stat">
+              <span className="go-stat-label">Wickets Lost</span>
+              <span className="go-stat-value" style={{color:'#ff4444'}}>{wickets}</span>
+            </div>
+            <div className="go-stat">
+              <span className="go-stat-label">Balls Faced</span>
+              <span className="go-stat-value">{ballsBowled}</span>
+            </div>
+            <div className="go-stat">
+              <span className="go-stat-label">Strike Rate</span>
+              <span className="go-stat-value" style={{color:'#f4d03f'}}>
+                {ballsBowled > 0 ? ((runs / ballsBowled) * 100).toFixed(1) : '0.0'}
+              </span>
+            </div>
+          </div>
+          <button id="restart-btn" onClick={restart}>🔄 PLAY AGAIN</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+
+</script>
+</body>
+</html>
