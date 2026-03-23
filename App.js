@@ -23,3 +23,4 @@ function App() {
 }
 
 export default App;
+"// Power Bar Logic Added" 
